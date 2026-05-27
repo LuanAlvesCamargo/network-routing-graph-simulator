@@ -1,41 +1,149 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+{% extends "base.html" %}
+{% block title %}Topologia{% endblock %}
+{% block page_title %}Topologia da Rede{% endblock %}
+{% block page_subtitle %}Visualização completa • Menor caminho destacado{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% block content %}
 
-    <title>Topologia da Rede</title>
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-
-<body>
-
-    <div class="dashboard">
-
-        <aside class="sidebar">
-            <h2>Admin Network</h2>
-
-            <a href="/">Dashboard</a>
-            <a href="/topology">Topologia</a>
-            <a href="/manage">Gerenciar Rede</a>
-        </aside>
-
-        <main class="content">
-
-            <h1>Topologia da Rede</h1>
-
-            <div class="topology-panel">
-
-                <img src="{{ url_for('static', filename='images/graph.png') }}" alt="Topologia">
-
-            </div>
-
-        </main>
-
+<!-- KPI row -->
+<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+  <div class="kpi-card kpi-blue animate-in">
+    <div class="kpi-icon">⬡</div>
+    <div class="kpi-body">
+      <div class="kpi-value">{{ stats.total_nodes }}</div>
+      <div class="kpi-label">Total de Nós</div>
     </div>
+  </div>
+  <div class="kpi-card kpi-purple animate-in">
+    <div class="kpi-icon">⇄</div>
+    <div class="kpi-body">
+      <div class="kpi-value">{{ stats.total_edges }}</div>
+      <div class="kpi-label">Arestas</div>
+    </div>
+  </div>
+  <div class="kpi-card kpi-green animate-in">
+    <div class="kpi-icon">◈</div>
+    <div class="kpi-body">
+      <div class="kpi-value">{{ algo.shortest_path | length }}</div>
+      <div class="kpi-label">Hops no Menor Caminho</div>
+    </div>
+  </div>
+  <div class="kpi-card kpi-amber animate-in">
+    <div class="kpi-icon">⊡</div>
+    <div class="kpi-body">
+      <div class="kpi-value">{{ algo.cost }}</div>
+      <div class="kpi-label">Custo Dijkstra</div>
+    </div>
+  </div>
+</div>
 
-</body>
+<!-- Full topology -->
+<div class="content-grid two-col">
 
-</html>
+  <div class="panel animate-in" style="grid-column:1 / -1">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-icon">⬡</span>
+        Mapa da Rede — Visão Completa
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="panel-badge badge-red">Caminho mínimo em vermelho</span>
+        <span class="panel-badge badge-blue">{{ algo.source }} → {{ algo.target }}</span>
+      </div>
+    </div>
+    <div class="topology-img-wrap">
+      <img
+        class="topology-img"
+        src="{{ url_for('static', filename='images/graph.png') }}?t={{ graph_ts }}"
+        alt="Topologia completa"
+        style="max-height:580px;object-fit:contain;background:#070c18">
+    </div>
+  </div>
+
+</div>
+
+<!-- Legend + Path details -->
+<div class="content-grid three-col" style="margin-top:18px">
+
+  <div class="panel animate-in">
+    <div class="panel-header">
+      <div class="panel-title"><span class="panel-icon">◉</span>Legenda</div>
+    </div>
+    <div class="panel-body">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        {% set legends = [
+          ('⬤', '#38bdf8', 'Router', 'Roteador de rede'),
+          ('⬤', '#22c55e', 'Server', 'Servidor de dados'),
+          ('⬤', '#f59e0b', 'User',   'Estação de usuário'),
+          ('⬤', '#a855f7', 'Switch', 'Switch de rede'),
+          ('─', '#ef4444', 'Caminho', 'Menor caminho (Dijkstra)'),
+        ] %}
+        {% for icon, color, label, desc in legends %}
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg-secondary);border-radius:var(--radius-sm);border:1px solid var(--border)">
+          <span style="color:{{ color }};font-size:16px">{{ icon }}</span>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-primary)">{{ label }}</div>
+            <div style="font-size:10px;color:var(--text-muted)">{{ desc }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel animate-in">
+    <div class="panel-header">
+      <div class="panel-title"><span class="panel-icon">◈</span>Menor Caminho</div>
+      <span class="panel-badge badge-red">Dijkstra</span>
+    </div>
+    <div class="panel-body">
+      {% if algo.shortest_path %}
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Rota</div>
+        {% for node in algo.shortest_path %}
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            {% if not loop.first %}
+            <div style="margin-left:10px;color:var(--red);font-size:10px">↓</div>
+            {% endif %}
+            <span class="type-pill type-{% for n in nodes %}{% if n.id == node %}{{ n.type }}{% endif %}{% endfor %}" style="border:1px solid var(--red);color:var(--red)">{{ node }}</span>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="cost-row" style="padding:10px 12px;background:var(--red-dim);border-radius:var(--radius-sm);border:1px solid rgba(239,68,68,.2)">
+        <span class="cost-label">Custo total:</span>
+        <span class="cost-value">{{ algo.cost }}</span>
+      </div>
+      {% else %}
+      <div class="alert alert-error">Nenhum caminho encontrado entre {{ algo.source }} e {{ algo.target }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="panel animate-in">
+    <div class="panel-header">
+      <div class="panel-title"><span class="panel-icon">⊞</span>Distribuição</div>
+    </div>
+    <div class="panel-body">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        {% for label, val, color in [
+          ('Roteadores', stats.router,  '#38bdf8'),
+          ('Servidores', stats.server,  '#22c55e'),
+          ('Usuários',   stats.user,    '#f59e0b'),
+          ('Switches',   stats.switch,  '#a855f7'),
+        ] %}
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:11px;color:var(--text-secondary)">{{ label }}</span>
+            <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:{{ color }}">{{ val }}</span>
+          </div>
+          <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+            <div style="height:100%;background:{{ color }};border-radius:2px;width:{% if stats.total_nodes > 0 %}{{ (val / stats.total_nodes * 100)|round|int }}%{% else %}0%{% endif %};transition:.6s ease"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

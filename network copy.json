@@ -1,0 +1,23 @@
+{
+    "nodes": [
+        {"id": "Core", "type": "router"},
+        {"id": "R1", "type": "router"},
+        {"id": "R2", "type": "router"},
+        {"id": "R3", "type": "router"},
+        {"id": "Server", "type": "server"},
+        {"id": "User1", "type": "user"},
+        {"id": "User2", "type": "user"},
+        {"id": "User3", "type": "user"},
+        {"id": "User4", "type": "user"}
+    ],
+    "edges": [
+        {"source": "Core", "target": "R1", "weight": 2},
+        {"source": "Core", "target": "R2", "weight": 4},
+        {"source": "R1", "target": "R3", "weight": 3},
+        {"source": "R2", "target": "Server", "weight": 5},
+        {"source": "R3", "target": "User1", "weight": 2},
+        {"source": "R3", "target": "User2", "weight": 3},
+        {"source": "R2", "target": "User3", "weight": 2},
+        {"source": "R2", "target": "User4", "weight": 4}
+    ]
+}

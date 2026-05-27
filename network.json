@@ -35,9 +35,12 @@
         {
             "id": "User4",
             "type": "user"
+        },
+        {
+            "id": "user luan",
+            "type": "user"
         }
     ],
-
     "edges": [
         {
             "source": "Core",
@@ -78,6 +81,11 @@
             "source": "R2",
             "target": "User4",
             "weight": 4
+        },
+        {
+            "source": "user luan",
+            "target": "R1",
+            "weight": 1
         }
     ]
 }

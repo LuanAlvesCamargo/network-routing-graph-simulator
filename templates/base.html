@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}NetAdmin{% endblock %} — Network Operations Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sora:wght@300;400;500;600;700&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div id="loading" class="loading-overlay">
+  <div class="spinner"></div>
+</div>
+
+<div class="app-shell">
+
+  <!-- ── Sidebar ─────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">⬡</div>
+      <div>
+        <div class="logo-text">NetAdmin</div>
+        <div class="logo-sub">NOC Platform</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Monitoramento</div>
+      <a href="/"         class="nav-item {% if request.path == '/' %}active{% endif %}">
+        <span class="nav-icon">◈</span><span>Dashboard</span>
+      </a>
+      <a href="/topology" class="nav-item {% if request.path == '/topology' %}active{% endif %}">
+        <span class="nav-icon">⬡</span><span>Topologia</span>
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Administração</div>
+      <a href="/manage"   class="nav-item {% if request.path == '/manage' %}active{% endif %}">
+        <span class="nav-icon">⊞</span><span>Gerenciar Rede</span>
+      </a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="status-indicator">
+        <div class="status-dot"></div>
+        <span class="status-text">Sistema Online</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ───────────────────────────────── -->
+  <div class="main-area">
+    <header class="top-header">
+      <div class="header-left">
+        <div class="page-title">{% block page_title %}Dashboard{% endblock %}</div>
+        <div class="page-subtitle">{% block page_subtitle %}Network Operations Center{% endblock %}</div>
+      </div>
+      <div class="header-right">
+        <div class="header-badge">
+          <span class="dot"></span>
+          <span id="live-label">Live</span>
+        </div>
+        <button class="btn-refresh" onclick="refreshData()">↻ Atualizar</button>
+      </div>
+    </header>
+
+    <div class="page-content">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

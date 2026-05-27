@@ -1,137 +1,285 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Visão geral da rede • Teoria dos Grafos{% endblock %}
 
-<head>
+{% block content %}
 
-    <meta charset="UTF-8">
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Network Admin Dashboard</title>
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-
-</head>
-
-<body>
-
-    <div class="dashboard">
-
-        <aside class="sidebar">
-
-            <h2>Admin Network</h2>
-
-            <a href="/">Dashboard</a>
-
-            <a href="/topology">
-                Topologia
-            </a>
-
-            <a href="/manage">
-                Gerenciar Rede
-            </a>
-
-        </aside>
-
-        <main class="content">
-
-            <header class="page-header">
-
-                <h1>
-                    Painel Administrativo da Rede
-                </h1>
-
-                <p>
-                    Monitoramento Inteligente com Teoria dos Grafos
-                </p>
-
-            </header>
-
-            <section class="topology-preview">
-
-                <h2>Topologia Atual da Rede</h2>
-
-                <img src="{{ url_for('static', filename='images/graph.png') }}" alt="Topologia da Rede">
-
-            </section>
-
-            <section class="cards">
-
-                <div class="card">
-
-                    <h2>BFS</h2>
-
-                    <p>
-                        {{ bfs_result }}
-                    </p>
-
-                </div>
-
-                <div class="card">
-
-                    <h2>DFS</h2>
-
-                    <p>
-                        {{ dfs_result }}
-                    </p>
-
-                </div>
-
-                <div class="card">
-
-                    <h2>Dijkstra</h2>
-
-                    <p>
-                        <strong>Melhor rota:</strong>
-                    </p>
-
-                    <p>
-                        {{ shortest_path }}
-                    </p>
-
-                    <p>
-                        <strong>Custo:</strong>
-                        {{ cost }}
-                    </p>
-
-                </div>
-
-            </section>
-
-            <section class="network-status">
-
-                <h2>Status da Rede</h2>
-
-                <div class="status-grid">
-
-                    <div class="status-card">
-                        <h3>Roteadores</h3>
-                        <p>4 ativos</p>
-                    </div>
-
-                    <div class="status-card">
-                        <h3>Usuários</h3>
-                        <p>4 conectados</p>
-                    </div>
-
-                    <div class="status-card">
-                        <h3>Servidor</h3>
-                        <p>Online</p>
-                    </div>
-
-                    <div class="status-card">
-                        <h3>Menor Caminho</h3>
-                        <p>Calculado</p>
-                    </div>
-
-                </div>
-
-            </section>
-
-        </main>
-
+<!-- ── KPI Row ──────────────────────────────────── -->
+<div class="kpi-grid">
+  <div class="kpi-card kpi-blue animate-in">
+    <div class="kpi-icon">⬡</div>
+    <div class="kpi-body">
+      <div class="kpi-value" id="kpi-nodes">{{ stats.total_nodes }}</div>
+      <div class="kpi-label">Nós Totais</div>
     </div>
+  </div>
+  <div class="kpi-card kpi-green animate-in">
+    <div class="kpi-icon">👤</div>
+    <div class="kpi-body">
+      <div class="kpi-value" id="kpi-users">{{ stats.user }}</div>
+      <div class="kpi-label">Usuários</div>
+    </div>
+  </div>
+  <div class="kpi-card kpi-amber animate-in">
+    <div class="kpi-icon">⇄</div>
+    <div class="kpi-body">
+      <div class="kpi-value" id="kpi-routers">{{ stats.router }}</div>
+      <div class="kpi-label">Roteadores</div>
+    </div>
+  </div>
+  <div class="kpi-card kpi-purple animate-in">
+    <div class="kpi-icon">⊡</div>
+    <div class="kpi-body">
+      <div class="kpi-value" id="kpi-edges">{{ stats.total_edges }}</div>
+      <div class="kpi-label">Conexões</div>
+    </div>
+  </div>
+  <div class="kpi-card kpi-green animate-in">
+    <div class="kpi-icon">◎</div>
+    <div class="kpi-body">
+      <div class="kpi-value" id="kpi-cost">{{ algo.cost }}</div>
+      <div class="kpi-label">Custo Mínimo</div>
+    </div>
+  </div>
+</div>
 
-</body>
+<!-- ── Main grid: topology + algorithms ─────────── -->
+<div class="content-grid two-col" style="margin-bottom:18px">
 
-</html>
+  <!-- Topology panel -->
+  <div class="panel animate-in">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-icon">⬡</span>
+        Topologia da Rede
+      </div>
+      <span class="panel-badge badge-blue" id="topo-nodes-badge">{{ stats.total_nodes }} nós</span>
+    </div>
+    <div class="topology-img-wrap">
+      <img
+        id="topology-img"
+        class="topology-img"
+        src="{{ url_for('static', filename='images/graph.png') }}?t={{ graph_ts }}"
+        alt="Topologia da Rede">
+    </div>
+  </div>
+
+  <!-- Algorithms panel -->
+  <div class="panel animate-in">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-icon">◈</span>
+        Algoritmos de Grafo
+      </div>
+      <span class="panel-badge badge-green">Ativo</span>
+    </div>
+    <div class="panel-body">
+      <div class="algo-list">
+
+        <!-- BFS -->
+        <div class="algo-card">
+          <div class="algo-card-header">
+            <span class="algo-name" style="color:var(--blue)">BFS — Busca em Largura</span>
+            <span class="panel-badge badge-blue">{{ algo.bfs | length }} nós</span>
+          </div>
+          <div class="algo-path" id="bfs-path">
+            {% for node in algo.bfs %}
+              <span class="path-node">{{ node }}</span>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- DFS -->
+        <div class="algo-card">
+          <div class="algo-card-header">
+            <span class="algo-name" style="color:var(--purple)">DFS — Busca em Profundidade</span>
+            <span class="panel-badge badge-purple">{{ algo.dfs | length }} nós</span>
+          </div>
+          <div class="algo-path" id="dfs-path">
+            {% for node in algo.dfs %}
+              <span class="path-node">{{ node }}</span>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Dijkstra -->
+        <div class="algo-card">
+          <div class="algo-card-header">
+            <span class="algo-name" style="color:var(--red)">Dijkstra — Menor Caminho</span>
+            <span class="panel-badge badge-red">{{ algo.source }} → {{ algo.target }}</span>
+          </div>
+          <div class="algo-path" id="dijkstra-path">
+            {% if algo.shortest_path %}
+              {% for node in algo.shortest_path %}
+                <span class="path-node highlight">{{ node }}</span>
+                {% if not loop.last %}<span style="color:var(--red);font-size:10px">→</span>{% endif %}
+              {% endfor %}
+            {% else %}
+              <span style="color:var(--red-dim)">Sem caminho disponível</span>
+            {% endif %}
+          </div>
+          {% if algo.shortest_path %}
+          <div class="cost-row">
+            <span class="cost-label">Custo total:</span>
+            <span class="cost-value" id="dijkstra-cost">{{ algo.cost }}</span>
+          </div>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Bottom grid: devices + edges ─────────────── -->
+<div class="content-grid three-col">
+
+  <!-- Devices -->
+  <div class="panel animate-in">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-icon">◉</span>
+        Dispositivos
+      </div>
+      <span class="panel-badge badge-amber">{{ stats.total_nodes }} total</span>
+    </div>
+    <div class="panel-body" style="padding:0">
+      <table class="device-table">
+        <thead><tr><th>ID</th><th>Tipo</th></tr></thead>
+        <tbody id="devices-tbody">
+          {% for node in nodes %}
+          <tr>
+            <td class="node-id-cell">{{ node.id }}</td>
+            <td>
+              <span class="type-pill type-{{ node.type }}">{{ node.type }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Edges -->
+  <div class="panel animate-in">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-icon">⇄</span>
+        Conexões
+      </div>
+      <span class="panel-badge badge-purple">{{ stats.total_edges }} links</span>
+    </div>
+    <div class="panel-body" style="padding:0 10px">
+      <div id="edges-list">
+        {% for edge in edges %}
+        <div class="edge-row">
+          <span class="edge-src">{{ edge.source }}</span>
+          <span class="edge-arrow">──</span>
+          <span class="edge-tgt">{{ edge.target }}</span>
+          <span class="edge-weight">w: {{ edge.weight }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div class="panel animate-in">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="panel-icon">◐</span>
+        Status do Sistema
+      </div>
+      <span class="panel-badge badge-green">Online</span>
+    </div>
+    <div class="panel-body">
+      <div style="display:flex;flex-direction:column;gap:12px">
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg-secondary);border-radius:var(--radius-sm);border:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--text-secondary)">Roteadores</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="status-dot"></div>
+            <span style="font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--green)" id="stat-routers">{{ stats.router }}</span>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg-secondary);border-radius:var(--radius-sm);border:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--text-secondary)">Servidores</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="status-dot"></div>
+            <span style="font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--green)" id="stat-servers">{{ stats.server }}</span>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg-secondary);border-radius:var(--radius-sm);border:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--text-secondary)">Usuários</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="status-dot"></div>
+            <span style="font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--green)" id="stat-users">{{ stats.user }}</span>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg-secondary);border-radius:var(--radius-sm);border:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--text-secondary)">Switches</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="status-dot" style="background:var(--amber);box-shadow:0 0 6px var(--amber)"></div>
+            <span style="font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--amber)" id="stat-switches">{{ stats.switch }}</span>
+          </div>
+        </div>
+
+        {% if algo.error %}
+        <div class="alert alert-error">⚠ {{ algo.error }}</div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-refresh graph image and KPIs every 30s
+setInterval(function() {
+  fetch('/api/graph-data')
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('kpi-nodes').textContent    = d.stats.total_nodes;
+      document.getElementById('kpi-users').textContent    = d.stats.user;
+      document.getElementById('kpi-routers').textContent  = d.stats.router;
+      document.getElementById('kpi-edges').textContent    = d.stats.total_edges;
+      document.getElementById('kpi-cost').textContent     = d.cost;
+      document.getElementById('stat-routers').textContent = d.stats.router;
+      document.getElementById('stat-servers').textContent = d.stats.server;
+      document.getElementById('stat-users').textContent   = d.stats.user;
+      document.getElementById('stat-switches').textContent= d.stats.switch;
+      document.getElementById('topo-nodes-badge').textContent = d.stats.total_nodes + ' nós';
+
+      // Refresh graph image
+      const img = document.getElementById('topology-img');
+      img.src = '/static/images/graph.png?t=' + d.graph_ts;
+    }).catch(()=>{});
+}, 30000);
+
+function refreshData() {
+  document.getElementById('loading').classList.add('active');
+  fetch('/api/graph-data')
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('kpi-nodes').textContent    = d.stats.total_nodes;
+      document.getElementById('kpi-users').textContent    = d.stats.user;
+      document.getElementById('kpi-routers').textContent  = d.stats.router;
+      document.getElementById('kpi-edges').textContent    = d.stats.total_edges;
+      document.getElementById('kpi-cost').textContent     = d.cost;
+      const img = document.getElementById('topology-img');
+      img.src = '/static/images/graph.png?t=' + d.graph_ts;
+    })
+    .finally(() => {
+      document.getElementById('loading').classList.remove('active');
+    });
+}
+</script>
+{% endblock %}

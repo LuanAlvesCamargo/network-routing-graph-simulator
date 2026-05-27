@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Gerenciar Rede{% endblock %}
+{% block page_title %}Gerenciamento de Rede{% endblock %}
+{% block page_subtitle %}Adicionar e remover dispositivos e conexões{% endblock %}
+
+{% block content %}
+
+<!-- Flash alerts via URL param -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+  <div class="alert alert-{{ cat }}" style="margin-bottom:16px">
+    {% if cat == 'success' %}✓{% else %}⚠{% endif %} {{ msg }}
+  </div>
+  {% endfor %}
+{% endwith %}
+
+<!-- KPI summary -->
+<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px">
+  <div class="kpi-card kpi-blue animate-in">
+    <div class="kpi-icon">⬡</div>
+    <div class="kpi-body">
+      <div class="kpi-value">{{ stats.total_nodes }}</div>
+      <div class="kpi-label">Nós Totais</div>
+    </div>
+  </div>
+  <div class="kpi-card kpi-amber animate-in">
+    <div class="kpi-icon">⇄</div>
+    <div class="kpi-body">
+      <div class="kpi-value">{{ stats.router }}</div>
+      <div class="kpi-label">Roteadores</div>
+    </div>
+  </div>
+  <div class="kpi-card kpi-green animate-in">
+    <div class="kpi-icon">👤</div>
+    <div class="kpi-body">
+      <div class="kpi-value">{{ stats.user }}</div>
+      <div class="kpi-label">Usuários</div>
+    </div>
+  </div>
+  <div class="kpi-card kpi-purple animate-in">
+    <div class="kpi-icon">⊡</div>
+    <div class="kpi-body">
+      <div class="kpi-value">{{ stats.total_edges }}</div>
+      <div class="kpi-label">Conexões</div>
+    </div>
+  </div>
+</div>
+
+<!-- Forms grid -->
+<div class="form-grid" style="margin-bottom:24px">
+
+  <!-- Add Node -->
+  <div class="form-panel animate-in">
+    <div class="panel-header">
+      <div class="panel-title"><span class="panel-icon">＋</span>Adicionar Dispositivo</div>
+      <span class="panel-badge badge-green">Novo nó</span>
+    </div>
+    <form class="form-body" action="/add-node" method="POST" onsubmit="showLoading()">
+      <div class="form-field">
+        <label class="form-label">Identificador do nó</label>
+        <input class="form-input" type="text" name="node_id" placeholder="Ex: R4, User5, SW1" required>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Tipo de dispositivo</label>
+        <select class="form-select" name="node_type">
+          <option value="router">🔵 Router</option>
+          <option value="server">🟢 Servidor</option>
+          <option value="user">🟡 Usuário</option>
+          <option value="switch">🟣 Switch</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">＋ Adicionar Dispositivo</button>
+    </form>
+  </div>
+
+  <!-- Remove Node -->
+  <div class="form-panel animate-in">
+    <div class="panel-header">
+      <div class="panel-title"><span class="panel-icon">✕</span>Remover Dispositivo</div>
+      <span class="panel-badge badge-red">Remover nó</span>
+    </div>
+    <form class="form-body" action="/remove-node" method="POST" onsubmit="return confirmRemove(this)">
+      <div class="form-field">
+        <label class="form-label">Identificador do nó</label>
+        <input class="form-input" type="text" name="node_id" placeholder="ID exato do dispositivo" required>
+      </div>
+      <div class="alert alert-info" style="font-size:11px">
+        ⚠ Remover um nó apaga todas as suas conexões automaticamente.
+      </div>
+      <button type="submit" class="btn btn-danger btn-full">✕ Remover Dispositivo</button>
+    </form>
+  </div>
+
+  <!-- Add Connection -->
+  <div class="form-panel animate-in">
+    <div class="panel-header">
+      <div class="panel-title"><span class="panel-icon">⇄</span>Adicionar Conexão</div>
+      <span class="panel-badge badge-blue">Nova aresta</span>
+    </div>
+    <form class="form-body" action="/add-edge" method="POST" onsubmit="showLoading()">
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Origem</label>
+          <input class="form-input" type="text" name="source" placeholder="Nó de origem" required>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Destino</label>
+          <input class="form-input" type="text" name="target" placeholder="Nó de destino" required>
+        </div>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Peso / Custo</label>
+        <input class="form-input" type="number" name="weight" placeholder="Ex: 3" value="1" min="1">
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">⇄ Adicionar Conexão</button>
+    </form>
+  </div>
+
+  <!-- Network info -->
+  <div class="form-panel animate-in">
+    <div class="panel-header">
+      <div class="panel-title"><span class="panel-icon">◈</span>Tipos Disponíveis</div>
+    </div>
+    <div class="form-body" style="gap:8px">
+      {% for t, color, icon, desc in [
+        ('router', '#38bdf8', '⇄', 'Roteador — interliga sub-redes'),
+        ('server', '#22c55e', '⊡', 'Servidor — provê serviços'),
+        ('user',   '#f59e0b', '◎', 'Usuário — estação cliente'),
+        ('switch', '#a855f7', '⬡', 'Switch — comutador L2'),
+      ] %}
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg-secondary);border-radius:var(--radius-sm);border:1px solid var(--border)">
+        <span style="color:{{ color }};font-size:16px">{{ icon }}</span>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:{{ color }}">{{ t }}</div>
+          <div style="font-size:10px;color:var(--text-muted)">{{ desc }}</div>
+        </div>
+        <span class="type-pill type-{{ t }}" style="margin-left:auto">{{ stats[t] }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Device list + Edges list -->
+<div class="content-grid two-col">
+
+  <div class="panel animate-in">
+    <div class="panel-header">
+      <div class="panel-title"><span class="panel-icon">◉</span>Dispositivos na Rede</div>
+      <span class="panel-badge badge-blue">{{ stats.total_nodes }} dispositivos</span>
+    </div>
+    <div style="padding:0">
+      <table class="device-table">
+        <thead><tr><th>ID</th><th>Tipo</th></tr></thead>
+        <tbody>
+          {% for node in data.nodes %}
+          <tr>
+            <td class="node-id-cell">{{ node.id }}</td>
+            <td><span class="type-pill type-{{ node.type }}">{{ node.type }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel animate-in">
+    <div class="panel-header">
+      <div class="panel-title"><span class="panel-icon">⇄</span>Conexões Ativas</div>
+      <span class="panel-badge badge-purple">{{ stats.total_edges }} links</span>
+    </div>
+    <div style="padding:8px 10px">
+      {% for edge in data.edges %}
+      <div class="edge-row">
+        <span class="edge-src">{{ edge.source }}</span>
+        <span class="edge-arrow">──</span>
+        <span class="edge-tgt">{{ edge.target }}</span>
+        <span class="edge-weight">w: {{ edge.weight }}</span>
+      </div>
+      {% endfor %}
+      {% if data.edges | length == 0 %}
+      <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">Nenhuma conexão definida</div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showLoading() {
+  document.getElementById('loading').classList.add('active');
+}
+
+function confirmRemove(form) {
+  const id = form.querySelector('[name=node_id]').value;
+  if (!confirm(`Remover "${id}" e todas as suas conexões?`)) return false;
+  showLoading();
+  return true;
+}
+</script>
+{% endblock %}
